@@ -60,3 +60,64 @@ maxintervalhourshigh <- prettyNum((avgstepsperinterval[which.max(avgstepsperinte
 ```
 
 The interval with the highest number of average steps per day number is between **`r maxinterval`** and **`r maxintervalhigh`** seconds (or between `r maxintervalhours` and `r maxintervalhourshigh` hours) and the average number of steps in this interval is **`r maxintervalsteps`**. Maybe this guy goes for a walk just after lunch every day, either that or he has to run across campus for his 2pm class.
+
+# Imputing Missing Values
+
+We will do some analysis of the missing values to reduce bias in our calculations and summaries.
+
+```{r}
+nummissingdays <- prettyNum(sum(is.na(activitydata$steps)),big.mark=",",digits=2)
+```
+
+The number of missing values in the data set is **`r nummissingdays`**.
+
+I will use the average of each 5 minute interval to fill in the missing data. I think this is more precise than the mean of the entire day. We already have our data set of the average steps per day in each interval. All we need to do is merge this with the original data set. We're going to create a new data frame so we can preserve the old one. Then if the value of steps is NA, we just replace the value of steps with the associated interval mean.
+
+```{r}
+activitydata2 <- merge(activitydata,avgstepsperinterval)
+endnum <- length(activitydata2$steps)
+for(i in 1:endnum){if(is.na(activitydata2[i,2])){activitydata2[i,2]<-activitydata2[i,5]}}
+nummissingdaysnew <- prettyNum(sum(is.na(activitydata2$steps)),big.mark=",",digits=2)
+```
+
+The number of missing values in the new data set is now **`r nummissingdaysnew`**.
+
+Next we're going to look at this new imputed data and sum the steps per day and eventually look at the mean. We'll create a new table of the total steps per day and look at the first few records, as well as the histogram of total steps per day.
+
+```{r}
+stepsperday2 <- aggregate(activitydata2$steps,by=list(date=activitydata2$date),FUN=sum)
+names(stepsperday2) <- c("date","sumsteps")
+head(stepsperday2)
+hist(stepsperday2$sumsteps,main="Histogram - Total Steps Per Day (With Imputed values)",xlab="Total Steps Per Day",col="violetred")
+meansteps2 <- prettyNum(mean(stepsperday2$sumsteps,na.rm=TRUE),big.mark=",",digits=2)
+mediansteps2 <- prettyNum(median(stepsperday2$sumsteps,na.rm=TRUE),big.mark=",",digits=2)
+```
+
+The mean number of total steps per day is **`r meansteps2`** and the median number of total steps per day is **`r mediansteps2`**.
+
+The data didn't change much by imputing the missing values. The histogram has different values but the same shape. The averages did not change at all and the median is only 1 more.
+
+# Are there differences in activity patterns between weekdays and weekends?
+
+First we need to create a variable in our data that is the day of the week. Then we need to assign a factor "weekday" or "weekend" based on the day of the week.
+
+```{r}
+activitydata2$weekday <- weekdays(activitydata2$datetime)
+activitydata2$weekend <- as.factor(c("weekend","weekday"))
+activitydata2$weekend <- ifelse(activitydata2$weekday == "Saturday" | activitydata2$weekday == "Sunday", "weekend", "weekday")
+```
+
+Let's take a look at the data to make sure that it is looking ok.
+
+```{r}
+head(activitydata2,10)
+```
+
+Yes, looking good. Now we just need to make the plot showing weekdays and weekends separately.
+
+```{r}
+avgstepsperinterval2 <- aggregate(activitydata2$steps,by=list(interval=activitydata2$interval,weekend=activitydata2$weekend),FUN=mean,na.rm=TRUE)
+names(avgstepsperinterval2) <- c("interval","weekend","avgsteps")
+library(lattice)
+xyplot(avgstepsperinterval2$avgsteps~avgstepsperinterval2$interval|avgstepsperinterval2$weekend,avgstepsperinterval2,type="l",xlab="Time Interval (seconds)",ylab="Average Steps",main="Time Series - Average Steps per Time Interval",layout=c(1,2))
+```
