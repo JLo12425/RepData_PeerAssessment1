@@ -1,0 +1,62 @@
+---
+title: "Reproducible Research - Peer Assessment 1"
+author: "Jennifer Williams"
+date: "October 17, 2015"
+output: html_document
+---
+
+# Loading and Pre-Processing the Data
+
+First we need to load and pre-process the data. I took a look at the data in Microsoft Excel and it looks very tidy. The missing values that are "NA" will load as missing values, as the default for R is "NA". Please make sure the data is in your working directory! We will also print out the summary of the variables 
+
+```{r}
+activitydata <- read.csv("activity.csv")
+str(activitydata)
+```
+
+You will notice that the variable 'date' has type Factor. We will now create a new POSIXlt variable that is the 'date' and 'interval' variables together as "Y-M-D H:M:S".
+
+```{r}
+activitydata$datetime <- strptime(paste(activitydata$date,activitydata$interval),format="%Y-%m-%d%S")
+```
+
+Let's check the first few rows of the data with this new variable.
+
+```{r}
+head(activitydata)
+```
+
+## **Looking good!**
+
+# What is the Mean Total Number of Steps Taken per Day?
+
+Next we're going to sum the steps per day and eventually look at the mean. We'll create a new table of the total steps per day and look at the first few records, as well as the histogram of total steps per day.
+
+```{r}
+stepsperday <- aggregate(activitydata$steps,by=list(date=activitydata$date),FUN=sum)
+names(stepsperday) <- c("date","sumsteps")
+head(stepsperday)
+hist(stepsperday$sumsteps,main="Histogram - Total Steps Per Day",xlab="Total Steps Per Day",col="purple")
+meansteps <- prettyNum(mean(stepsperday$sumsteps,na.rm=TRUE),big.mark=",",digits=2)
+mediansteps <- prettyNum(median(stepsperday$sumsteps,na.rm=TRUE),big.mark=",",digits=2)
+```
+
+The mean number of total steps per day is **`r meansteps`** and the median number of total steps per day is **`r mediansteps`**.
+
+# What is the Average Daily Activity Pattern?
+
+We need a table by the interval level and the average steps across all days in that interval level. We'll create this here and look at the first few rows as well as the time series plot.
+
+```{r}
+avgstepsperinterval <- aggregate(activitydata$steps,by=list(interval=activitydata$interval),FUN=mean,na.rm=TRUE)
+names(avgstepsperinterval) <- c("interval","avgsteps")
+head(avgstepsperinterval)
+plot(avgstepsperinterval$interval,avgstepsperinterval$avgsteps,type="l",main="Time Series - Average Steps per Time Interval",xlab="Time Interval (seconds)",ylab="Average Steps",col="darkgreen")
+maxinterval <- prettyNum(avgstepsperinterval[which.max(avgstepsperinterval$avgsteps),1],big.mark=",",digits=2)
+maxintervalhigh <- prettyNum(avgstepsperinterval[which.max(avgstepsperinterval$avgsteps),1]+5,big.mark=",",digits=2)
+maxintervalsteps <- prettyNum(avgstepsperinterval[which.max(avgstepsperinterval$avgsteps),2],big.mark=",",digits=2)
+maxintervalhours <- prettyNum(avgstepsperinterval[which.max(avgstepsperinterval$avgsteps),1]/60,big.mark=",",digits=4)
+maxintervalhourshigh <- prettyNum((avgstepsperinterval[which.max(avgstepsperinterval$avgsteps),1]+5)/60,big.mark=",",digits=4)
+```
+
+The interval with the highest number of average steps per day number is between **`r maxinterval`** and **`r maxintervalhigh`** seconds (or between `r maxintervalhours` and `r maxintervalhourshigh` hours) and the average number of steps in this interval is **`r maxintervalsteps`**. Maybe this guy goes for a walk just after lunch every day, either that or he has to run across campus for his 2pm class.
